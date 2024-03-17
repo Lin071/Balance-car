@@ -40,33 +40,40 @@
  * See http://www.freertos.org/a00110.html
  *----------------------------------------------------------*/
 
-#define configUSE_IDLE_HOOK			0		//设置为1使用空闲钩子（Idle Hook类似于回调函数），0忽略空闲钩子
+#define configUSE_IDLE_HOOK			1		//设置为1使用空闲钩子（Idle Hook类似于回调函数），0忽略空闲钩子
 #define configUSE_TICK_HOOK			0		//设置为1使用时间片钩子（Tick Hook），0忽略时间片钩子
 #define configCPU_CLOCK_HZ			( ( unsigned long ) 72000000 )		//CPU内核时钟频率，系统CPU主频：stm32f103为72MHz
 #define configTICK_RATE_HZ			( ( TickType_t ) 1000 )          	//系统滴答，即系统每秒钟滴答的次数。配置为1000，就是把1秒分成了1000份，每一份为 1毫秒
-#define configMAX_PRIORITIES		( 5 )   //系统最大的优先级：设置为5时：优先级范围为0-4    FreeRTOS中优先级数值越大，优先级越高
+#define configMAX_PRIORITIES		( 32 )   //系统最大的优先级：设置为5时：优先级范围为0-4    FreeRTOS中优先级数值越大，优先级越高
 #define configMINIMAL_STACK_SIZE	( ( unsigned short ) 128 )  //最小堆栈的设置：用于配置一些任务的堆栈空间的大小，一般用于空闲、定时等一些系统任务中。单位是字
-#define configTOTAL_HEAP_SIZE		( ( size_t ) ( 17 * 1024 ) )    //设定系统的可用堆栈的总量大小（单位为字），这里定义总计可用的有效的RAM大小为17K
+#define configTOTAL_HEAP_SIZE		( ( size_t ) ( 10 * 1024 ) )    //设定系统的可用堆栈的总量大小（单位为字），这里定义总计可用的有效的RAM大小为10K（STM32F103C8T6 RAM 大小为 20*1024）
 #define configMAX_TASK_NAME_LEN		( 16 )  //用于定义任务名称允许的最大字符串长度。结束符“\0”也包括在内
-#define configUSE_TRACE_FACILITY	0		//设置成1表示启动可视化跟踪调试，会激活一些附加的结构体成员和函数
+
 #define configUSE_16_BIT_TICKS		0		//定义为1使用16位计数器 为0使用32位 对于任务最大延时或阻塞时间，16位计数器是262秒，而32位是17179869秒
 
-#define configUSE_PREEMPTION		 1    //调度模式    1：抢占式    0:：合作式
-#define configUSE_TIME_SLICING   1
-#define configIDLE_SHOULD_YIELD	 1		//当和空闲任务相同优先级的用户任务就绪时 空闲任务是否让出
+#define configUSE_PREEMPTION		1    //调度模式    1：抢占式    0:：合作式
+#define configUSE_TIME_SLICING      1
+#define configIDLE_SHOULD_YIELD	    1		//当和空闲任务相同优先级的用户任务就绪时 空闲任务是否让出
 
 #define configUSE_MUTEXES           1   //互斥信号量
 
-#define configUSE_TIMERS			 1   /* 使能定时器 */
-#define configTIMER_TASK_PRIORITY    31  /* 守护任务的优先级, 尽可能高一些 */
-#define configTIMER_QUEUE_LENGTH     5   /* 命令队列长度 */
-#define configTIMER_TASK_STACK_DEPTH 32  /* 守护任务的栈大小 */
 
-#define configUSE_COUNTING_SEMAPHORES 1
+
+//
+#define configUSE_TIMERS			        1   /* 使能定时器，用于守护进程 */
+#define INCLUDE_xTimerPendFunctionCall      1
+#define INCLUDE_xEventGroupSetBitFromISR    1
+///////////////////////////////////////////////////////////
+
+#define configTIMER_TASK_PRIORITY    configMAX_PRIORITIES - 1  /* 守护任务的优先级, 尽可能高一些 */
+#define configTIMER_QUEUE_LENGTH            5   /* 命令队列长度 */
+#define configTIMER_TASK_STACK_DEPTH        32  /* 守护任务的栈大小 */
+
+#define configUSE_COUNTING_SEMAPHORES       1
 
 /* Co-routine definitions. */
-#define configUSE_CO_ROUTINES 		0							//设置成1表示使用协程，0表示不使用协程。如果使用协程，必须在工程中包含croutine.c文件。
-#define configMAX_CO_ROUTINE_PRIORITIES ( 2 )		//应用程序协程（Co-routines）的有效优先级数目
+#define configUSE_CO_ROUTINES 		        0				//设置成1表示使用协程，0表示不使用协程。如果使用协程，必须在工程中包含croutine.c文件。
+#define configMAX_CO_ROUTINE_PRIORITIES     ( 2 )		//应用程序协程（Co-routines）的有效优先级数目
 
 
 /* Set the following definitions to 1 to include the API function, or zero

@@ -1,67 +1,168 @@
 /***********************************************************************/
-//		    ³ÌĞòËµÃ÷
-//´Ë³ÌĞòÓÃÓÚ£ºÇòĞÎ»úÆ÷ÈË(±ÏÉè)
-//ËùÓÃMCUĞ¾Æ¬£ºSTM32F103C8T6
-//×÷Õß£º071
+//		    ç¨‹åºè¯´æ˜
+//æ­¤ç¨‹åºç”¨äºï¼šä¸¤è½®å¹³è¡¡å°è½¦
+//æ‰€ç”¨MCUèŠ¯ç‰‡ï¼šSTM32F103C8T6
+//ä½œè€…ï¼š071
 //
 /***********************************************************************/
-#include "headfile.h"
+
+#include "stm32f10x_rcc.h"
+
+#include "FreeRTOS.h"
+#include "timers.h"
+#include "task.h"
+
+#include "sys.h"
+#include "led.h"
+#include "beep.h"
+#include "key.h"
+#include "motor.h"
+#include "encoder.h"
+#include "oled.h"
+#include "remote.h"
+#include "control.h"
+#include "mpu6050.h"
 
 
-int main(void)
+
+
+/* ç¡¬ä»¶åˆå§‹åŒ–å‡½æ•°å£°æ˜ */
+static void prvSetupHardware( void );
+/*-----------------------------------------------------------*/
+
+
+
+/***************************************************************************
+*å‡½  æ•°ï¼šstatic void vInitTask(void *pvParameters)
+*åŠŸ  èƒ½ï¼šåˆå§‹åŒ–ä»»åŠ¡ï¼Œç”¨äºåˆå§‹åŒ–å°è½¦æ¨¡å—ä»¥åŠåˆ›å»ºå…¶ä»–æ¨¡å—
+*å‚  æ•°ï¼špvParameters ä¸ºåˆ›å»ºä»»åŠ¡æ—¶æ‰€ä¼ é€’çš„å‚æ•°
+*è¿”å›å€¼ï¼šæ— 
+***************************************************************************/
+static void vInitTask(void *pvParameters)
 {
-    delay_init();	        	//=====ÑÓÊ±º¯Êı³õÊ¼»¯	
-    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);	//ÉèÖÃNVICÖĞ¶Ï·Ö×é2:2Î»ÇÀÕ¼ÓÅÏÈ¼¶£¬2Î»ÏìÓ¦ÓÅÏÈ¼¶
-    Uart1_init(115200);	    //=====´®¿Ú1³õÊ¼»¯(ÓÃÓÚHC-05À¶ÑÀÁ¬½ÓÉÏÎ»»úÏÔÊ¾²¨ĞÎ)
-    Uart3_init(115200);     //=====´®¿Ú3³õÊ¼»¯(ÓÃÓÚÊÖ»úÒ£¿Ø)
-    LED_Init();             //=====³õÊ¼»¯Óë LED Á¬½ÓµÄIO
-    Key_Init();							//=====°´¼ü³õÊ¼»¯
-    Motor_Init();		    		//=====³õÊ¼»¯Óëµç»úÁ¬½ÓµÄÓ²¼şIO½Ó¿Ú 
-    Steer_Init();						//=====¶æ»ú³õÊ¼»¯
-    A_Encoder_Init();       //=====³õÊ¼»¯±àÂëÆ÷A
-    B_Encoder_Init();       //=====³õÊ¼»¯±àÂëÆ÷B
-    while(MPU_Init())       //=====³õÊ¼»¯MPU6050 
-    {
-        RGB_LED_green();	//Èç¹ûÒ»Ö±¿¨ÔÚÕâ£¬RGBºìµÆÁÁÆğ
-        delay_ms(200);
-    }
-    delay_ms(20);
-    while(mpu_dmp_init())		//=====MPU6050ÄÚÖÃDMP³õÊ¼»¯£¬ÓÃÓÚ»ñÈ¡×ËÌ¬½Ç
-    {
-        RGB_LED_Orange();	//Èç¹ûÒ»Ö±¿¨ÔÚÕâ£¬RGB³ÈµÆÁÁÆğ
-        delay_ms(200);
-    }  
-    OLED_Init();						//=====OLED³õÊ¼»¯
-    OLED_ShowString(0,8,(u8 *)"hello!",16);		//OLEDÆÁÄ»ÏÔÊ¾ Hello
-    parameterInit();				//=====²ÎÊı³õÊ¼»¯
-    MPU6050_EXTI_Init();		//=====MPU6050ÖĞ¶Ï³õÊ¼»¯
+	taskENTER_CRITICAL();	//å…³é—­ä»»åŠ¡è°ƒåº¦
 
-    while(1)
-    {
-        if(task_direct){			//>>>>>10msÖ´ĞĞÒ»´ÎµÄ×ªÏòÈÎÎñ
-           task_direct = 0;
-           directLoop();
-        }
-        
-        if(task_stability){		//>>>>>20msÖ´ĞĞÒ»´ÎµÄ×ËÌ¬ÎÈ¶¨ÈÎÎñ
-           task_stability = 0;
-           stabilityLoop();
-        }
+	BaseType_t xReturn;
+	vTaskDelay(pdMS_TO_TICKS( 500UL ));		//å…ˆå»¶è¿Ÿä¸€æ®µæ—¶é—´
+	
+	NVIC_PriorityGroupConfig( NVIC_PriorityGroup_2 ); //è®¾ç½®NVICä¸­æ–­åˆ†ç»„2:2ä½æŠ¢å ä¼˜å…ˆçº§ï¼Œ2ä½å“åº”ä¼˜å…ˆçº§
 
-        if(task_speed){				//>>>>>50msÖ´ĞĞÒ»´ÎµÄËÙ¶È¿ØÖÆÈÎÎñ
-           task_speed = 0;
-           speedLoop();
-        }
-        
-        if(task_rgb){					//>>>>>100msÖ´ĞĞÒ»´ÎµÄĞ¡µÆ¿ØÖÆÈÎÎñ
-           task_rgb = 0;
-           lightControl();
-        }
+	/*	ç›¸å…³æ¨¡å—åˆå§‹åŒ–	*/
+	Led_Init();             //=====åˆå§‹åŒ–ä¸ LED è¿æ¥çš„IO
+	Beep_Init();			//=====åˆå§‹åŒ–ä¸ èœ‚é¸£å™¨ è¿æ¥çš„IO
+	Key_Init();				//=====æŒ‰é”®åˆå§‹åŒ–
+	Oled_Init();			//=====OLEDåˆå§‹åŒ–
+	Motor_Init();		    //=====åˆå§‹åŒ–ä¸ç”µæœºè¿æ¥çš„ç¡¬ä»¶IOæ¥å£
+	Encoder_Init();       	//=====åˆå§‹åŒ–ç¼–ç å™¨A
+	Uart1_init(115200);	    //=====ä¸²å£1åˆå§‹åŒ–(ç”¨äºHC-05è“ç‰™è¿æ¥ä¸Šä½æœºæ˜¾ç¤ºæ³¢å½¢)
+	Uart3_init(115200);     //=====ä¸²å£3åˆå§‹åŒ–(ç”¨äºæ‰‹æœºé¥æ§)
+	Mpu6050_Init();			//=====MPU6050åˆå§‹åŒ–
+	Key_EXTI_Init();		//=====æŒ‰é”®ä¸­æ–­åˆå§‹åŒ–
+	MPU6050_EXTI_Init();	//=====MPU6050ä¸­æ–­åˆå§‹åŒ–
+	xReturn = Task_Init();	//-----åˆ›å»ºå…¶ä»–ä»»åŠ¡
+	
+	if (xReturn != pdPASS)
+		// è¿›å…¥è¿™é‡Œä»£è¡¨å…¶ä»–ä»»åŠ¡åˆ›å»ºå¤±è´¥
+		OLED_ShowString(0,8,(u8 *)"Task init fail",16);
 
-				if(task_oled){				//>>>>>200msÖ´ĞĞÒ»´ÎµÄOLEDÆÁÄ»Ë¢ĞÂÈÎÎñ
-           task_oled = 0;        
-        }
-    }
+	vTaskDelete(NULL); 	// åˆ é™¤è‡ªå·±
+
+	taskEXIT_CRITICAL();	//æ‰“å¼€ä»»åŠ¡è°ƒåº¦
 }
-/*********ÈÎÎñÇĞ»»Î»ÓÚExit.cÎÄ¼ş¼ĞÖĞµÄ EXTI9_5_IRQHandler()º¯Êı **********/
+
+
+
+int main( void )
+{
+	BaseType_t xReturn;
+
+ 	/* RTOSæ‰€éœ€åŸºç¡€ç¡¬ä»¶åˆå§‹åŒ– */
+	prvSetupHardware();
+	
+  	/* åˆ›å»ºæœ€åˆå§‹çš„ä»»åŠ¡â€”â€”â€”â€”â€”ç”¨äºåˆå§‹åŒ–å°è½¦å…¶ä»–æ¨¡å—ä»¥åŠåˆ›å»ºå…¶ä»–ä»»åŠ¡ */
+	xReturn = xTaskCreate(vInitTask, "InitTask", 500, NULL, 10, NULL);
+	if (xReturn == pdPASS)
+	{
+		/* å¯åŠ¨è°ƒåº¦å™¨ */
+		vTaskStartScheduler();
+	}
+		
+	/* å¦‚æœç¨‹åºè¿è¡Œåˆ°äº†è¿™é‡Œå°±è¡¨ç¤ºå‡ºé”™äº†, ä¸€èˆ¬æ˜¯å†…å­˜ä¸è¶³ */
+	RGB_LED_Red();	//RGBçº¢ç¯äº®èµ·
+	BEEP_ON;		//èœ‚é¸£å™¨å¸¸é¸£
+	
+	return 0;
+}
+
+/*-----------------------------------------------------------*/
+
+
+/*-----------------------------------------------------------*/
+static void prvSetupHardware( void )
+{
+	/* RCCï¼ˆReset and Clock Controlï¼‰å¤ä½ä¸æ—¶é’Ÿæ§åˆ¶	Start with the clocks in their expected state. */
+	RCC_DeInit();
+
+	/* Enable HSE (high speed external clock). */
+	RCC_HSEConfig( RCC_HSE_ON );
+
+	/* Wait till HSE is ready. */
+	while( RCC_GetFlagStatus( RCC_FLAG_HSERDY ) == RESET )
+	{
+	}
+
+	/* 2 wait states required on the flash. */
+	*( ( unsigned long * ) 0x40022000 ) = 0x02;
+
+	/* HCLK = SYSCLK */
+	RCC_HCLKConfig( RCC_SYSCLK_Div1 );
+
+	/* PCLK2 = HCLK */
+	RCC_PCLK2Config( RCC_HCLK_Div1 );
+
+	/* PCLK1 = HCLK/2 */
+	RCC_PCLK1Config( RCC_HCLK_Div2 );
+
+	/* PLLCLK = 8MHz * 9 = 72 MHz. */
+	RCC_PLLConfig( RCC_PLLSource_HSE_Div1, RCC_PLLMul_9 );
+
+	/* Enable PLL. */
+	RCC_PLLCmd( ENABLE );
+
+	/* Wait till PLL is ready. */
+	while(RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET)
+	{
+	}
+
+	/* Select PLL as system clock source. */
+	RCC_SYSCLKConfig( RCC_SYSCLKSource_PLLCLK );
+
+	/* Wait till PLL is used as system clock source. */
+	while( RCC_GetSYSCLKSource() != 0x08 )
+	{
+	}
+
+	/* SPI2 Periph clock enable */
+	RCC_APB1PeriphClockCmd( RCC_APB1Periph_SPI2, ENABLE );
+
+	/* Configure HCLK clock as SysTick clock source. */
+	SysTick_CLKSourceConfig( SysTick_CLKSource_HCLK );
+
+	/* Set the Vector Table base address at 0x08000000 */
+	NVIC_SetVectorTable( NVIC_VectTab_FLASH, 0x0 );	
+}
+/*-----------------------------------------------------------*/
+
+#ifdef  DEBUG
+/* Keep the linker happy. */
+void assert_failed( unsigned char* pcFile, unsigned long ulLine )
+{
+	for( ;; )
+	{
+	}
+}
+#endif
+
+
+
 
